@@ -58,28 +58,84 @@ Requirements:
 8. Use proper string handling functions
 9. Include appropriate WHERE clauses for filtering
 10. Use proper aggregation functions when needed
+11. Use Common Table Expressions (CTEs) when appropriate for:
+    - Complex subqueries
+    - Recursive queries
+    - Multiple aggregations
+    - Data preparation steps
+    - Improving query readability
 
 Available Oracle Features:
-1. Window Functions:
+1. Common Table Expressions (CTEs):
+   - WITH clause for named subqueries
+   - Recursive CTEs for hierarchical data
+   - Multiple CTEs in a single query
+   - Materialized CTEs for performance
+   - CTEs with window functions
+
+2. Window Functions:
    - ROW_NUMBER(), RANK(), DENSE_RANK()
    - LAG(), LEAD()
    - FIRST_VALUE(), LAST_VALUE()
    - NTH_VALUE()
    - NTILE()
 
-2. Analytic Functions:
+3. Analytic Functions:
    - OVER() clause with PARTITION BY and ORDER BY
    - ROWS/RANGE BETWEEN for window frames
    - CUME_DIST(), PERCENT_RANK()
    - LISTAGG() with OVER()
    - RATIO_TO_REPORT()
 
-3. Advanced Analytics:
+4. Advanced Analytics:
    - MODEL clause for spreadsheet-like calculations
    - MATCH_RECOGNIZE for pattern matching
    - PIVOT/UNPIVOT for data transformation
    - Hierarchical queries with CONNECT BY
    - Regular expressions with REGEXP functions
+
+Example CTE Usage:
+1. Simple CTE:
+   WITH sales_data AS (
+     SELECT product_id, SUM(amount) as total_sales
+     FROM sales
+     GROUP BY product_id
+   )
+   SELECT p.name, s.total_sales
+   FROM products p
+   JOIN sales_data s ON p.id = s.product_id;
+
+2. Multiple CTEs:
+   WITH 
+   monthly_sales AS (
+     SELECT product_id, 
+            TRUNC(sale_date, 'MM') as month,
+            SUM(amount) as total
+     FROM sales
+     GROUP BY product_id, TRUNC(sale_date, 'MM')
+   ),
+   product_ranks AS (
+     SELECT product_id,
+            month,
+            RANK() OVER (PARTITION BY month ORDER BY total DESC) as rank
+     FROM monthly_sales
+   )
+   SELECT p.name, pr.month, pr.rank
+   FROM products p
+   JOIN product_ranks pr ON p.id = pr.product_id
+   WHERE pr.rank <= 5;
+
+3. Recursive CTE:
+   WITH RECURSIVE employee_hierarchy AS (
+     SELECT id, name, manager_id, 1 as level
+     FROM employees
+     WHERE manager_id IS NULL
+     UNION ALL
+     SELECT e.id, e.name, e.manager_id, eh.level + 1
+     FROM employees e
+     JOIN employee_hierarchy eh ON e.manager_id = eh.id
+   )
+   SELECT * FROM employee_hierarchy;
 
 Return the response in the following JSON format:
 {{
@@ -90,6 +146,7 @@ Return the response in the following JSON format:
         "joins": ["Explanation of join conditions and their purpose"],
         "conditions": ["Explanation of WHERE clause conditions"],
         "aggregations": ["Explanation of any aggregations or groupings"],
+        "ctes": ["Explanation of any CTEs used and their purpose"],
         "window_functions": ["Explanation of any window functions used"],
         "performance_notes": ["Any performance considerations or tips"]
     }}
